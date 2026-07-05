@@ -1,8 +1,20 @@
-export default function HistoryPage() {
+import { redirect } from 'next/navigation';
+import { getCurrentUserRecord } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { DnsDashboard } from '@/components/dns-dashboard';
+
+export default async function HistoryPage({ params }: { params: { workspaceId: string } }) {
+  const user = await getCurrentUserRecord();
+  if (!user) redirect('/sign-in');
+
+  const membership = await prisma.workspaceMembership.findFirst({ where: { userId: user.id, workspaceId: params.workspaceId } });
+  if (!membership) redirect('/sign-in');
+
+  const domains = await prisma.domain.findMany({ where: { workspaceId: params.workspaceId, deletedAt: null }, orderBy: { createdAt: 'desc' } });
+
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-8 text-center">
-      <h3 className="text-lg font-semibold">History</h3>
-      <p className="mt-2 text-sm text-slate-400">This area is intentionally empty for phase 1.</p>
+    <div className="space-y-6">
+      <DnsDashboard workspaceId={params.workspaceId} domains={domains} />
     </div>
   );
 }

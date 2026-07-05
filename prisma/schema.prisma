@@ -54,6 +54,19 @@ enum RecommendationStatus {
   dismissed
 }
 
+enum PlacementResult {
+  inbox
+  promotions
+  spam
+  missing
+  pending
+}
+
+enum SeedInboxProvider {
+  gmail
+  outlook
+}
+
 model User {
   id           String   @id @default(cuid())
   clerkUserId  String   @unique
@@ -171,4 +184,32 @@ model Recommendation {
   relatedCheckIds Json?
 
   @@map("recommendations")
+}
+
+model SeedInbox {
+  id            String              @id @default(cuid())
+  provider      SeedInboxProvider
+  emailAddress  String
+  credentialsRef String
+  isActive      Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+
+  @@map("seed_inboxes")
+}
+
+model PlacementTest {
+  id                  String           @id @default(cuid())
+  workspaceId         String
+  domainId            String
+  mailboxId           String
+  testBatchId         String
+  provider            SeedInboxProvider
+  subjectFingerprint  String
+  bodyFingerprint     String
+  sentAt              DateTime         @default(now())
+  result              PlacementResult  @default(pending)
+  resultDetectedAt    DateTime?
+  folderRaw           String?
+
+  @@map("placement_tests")
 }
