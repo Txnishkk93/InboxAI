@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Provider {
+  google
+  outlook
+  other
+}
+
+enum WorkspaceRole {
+  owner
+  admin
+  member
+  viewer
+}
+
+model User {
+  id           String   @id @default(cuid())
+  clerkUserId  String   @unique
+  email        String?
+  name         String?
+  createdAt    DateTime @default(now())
+  memberships  WorkspaceMembership[]
+
+  @@map("users")
+}
+
+model Workspace {
+  id           String   @id @default(cuid())
+  name         String
+  createdAt    DateTime @default(now())
+  ownerId      String
+  memberships  WorkspaceMembership[]
+  domains      Domain[]
+  mailboxes    Mailbox[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMembership {
+  id           String         @id @default(cuid())
+  userId       String
+  workspaceId  String
+  role         WorkspaceRole
+  createdAt    DateTime       @default(now())
+  user         User           @relation(fields: [userId], references: [id])
+  workspace    Workspace      @relation(fields: [workspaceId], references: [id])
+
+  @@unique([userId, workspaceId])
+  @@map("workspace_memberships")
+}
+
+model Domain {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  domainName   String
+  createdAt    DateTime  @default(now())
+  status       String    @default("active")
+  deletedAt    DateTime?
+  workspace    Workspace @relation(fields: [workspaceId], references: [id])
+  mailboxes    Mailbox[]
+
+  @@map("domains")
+}
+
+model Mailbox {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  domainId     String
+  senderEmail  String
+  provider     Provider
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+  workspace    Workspace @relation(fields: [workspaceId], references: [id])
+  domain       Domain    @relation(fields: [domainId], references: [id])
+
+  @@map("mailboxes")
+}
