@@ -146,7 +146,7 @@ export async function runDnsScan({ workspaceId, domainId }: { workspaceId: strin
   ]);
 
   const latestChecks = await prisma.dnsScanCheck.findMany({ where: { dnsScanId: scan.id } });
-  const score = calculateScore(latestChecks);
+  const score = calculateScore(latestChecks, []);
   await prisma.scoreHistory.create({
     data: {
       workspaceId,
@@ -162,7 +162,7 @@ export async function runDnsScan({ workspaceId, domainId }: { workspaceId: strin
   return { scan, duplicate: false };
 }
 
-export function calculateScore(checks: { checkType: string; status: string }[]) {
+export function calculateScore(checks: { checkType: string; status: string }[], placementTests: Array<{ provider: string; result: string }> = []) {
   const lookup = new Map(checks.map((check) => [check.checkType, check]));
   const scoreBreakdown = {
     authenticationHealth: 100,
@@ -173,6 +173,8 @@ export function calculateScore(checks: { checkType: string; status: string }[]) 
   };
 
   let total = 100;
+  let placementPenalty = 0;
+
   if (lookup.get('dmarc')?.status === 'fail') total -= 15;
   if (lookup.get('spf')?.status === 'warn') total -= 8;
   if (lookup.get('alignment')?.status === 'fail') total -= 12;
@@ -180,18 +182,33 @@ export function calculateScore(checks: { checkType: string; status: string }[]) 
   if (lookup.get('mx')?.status === 'fail') total -= 20;
   if (lookup.get('dkim')?.status === 'fail') total -= 12;
 
+  const gmailResults = placementTests.filter((test) => test.provider === 'gmail' && test.result !== 'pending');
+  if (gmailResults.length >= 3 && (gmailResults.filter((test) => test.result === 'spam').length / gmailResults.length) > 0.5) {
+    total -= 20;
+    placementPenalty += 20;
+  }
+
+  const outlookResults = placementTests.filter((test) => test.provider === 'outlook' && test.result !== 'pending');
+  if (outlookResults.length >= 2 && (outlookResults.filter((test) => test.result === 'inbox').length / outlookResults.length) < 0.5) {
+    total -= 10;
+    placementPenalty += 10;
+  }
+
   scoreBreakdown.authenticationHealth = Math.max(0, 100 - (lookup.get('dmarc')?.status === 'fail' ? 15 : 0) - (lookup.get('alignment')?.status === 'fail' ? 12 : 0) - (lookup.get('dkim')?.status === 'fail' ? 12 : 0));
   scoreBreakdown.infrastructureHealth = Math.max(0, 100 - (lookup.get('spf')?.status === 'fail' ? 15 : 0) - (lookup.get('spf')?.status === 'warn' ? 8 : 0) - (lookup.get('mx')?.status === 'fail' ? 20 : 0));
+  scoreBreakdown.placementPerformance = Math.max(0, 100 - placementPenalty);
 
   return {
     totalScore: Math.max(0, Math.min(100, total)),
     scoreBreakdown,
-    rawSignals: Object.fromEntries(checks.map((check) => [check.checkType, check.status])),
+    rawSignals: {
+      ...Object.fromEntries(checks.map((check) => [check.checkType, check.status])),
+      placement: placementTests.slice(0, 6).map((test) => `${test.provider}:${test.result}`),
+    },
   };
 }
 
-export async function createRecommendations({ workspaceId, domainId, checks }: { workspaceId: string; domainId: string; checks: { id: string; checkType: string; status: string }[] }) {
-  const existing = await prisma.recommendation.findMany({ where: { workspaceId, domainId } });
+export async function createRecommendations({ workspaceId, domainId, checks, placementTests = [] }: { workspaceId: string; domainId: string; checks: { id: string; checkType: string; status: string }[]; placementTests?: Array<{ provider: string; result: string }> }) {
   await prisma.recommendation.deleteMany({ where: { workspaceId, domainId } });
 
   const entries: Array<{ workspaceId: string; domainId: string; title: string; description: string; severity: 'low' | 'medium' | 'high' | 'critical'; confidence: number; category: string; relatedCheckIds: string[] }> = [];
@@ -210,6 +227,16 @@ export async function createRecommendations({ workspaceId, domainId, checks }: {
 
   if (spf?.status === 'warn') {
     entries.push({ workspaceId, domainId, title: 'Consolidate SPF includes', description: 'The SPF record uses too much indirection for safe DNS evaluation.', severity: 'medium', confidence: 88, category: 'infrastructure', relatedCheckIds: [spf.id] });
+  }
+
+  const gmailResults = placementTests.filter((test) => test.provider === 'gmail' && test.result !== 'pending');
+  const allDnsPassing = spf?.status === 'pass' && dkim?.status === 'pass' && dmarc?.status === 'pass';
+  if (allDnsPassing && gmailResults.length >= 2 && gmailResults.filter((test) => test.result === 'spam').length >= 2) {
+    entries.push({ workspaceId, domainId, title: 'Likely sending pattern or content reputation issue', description: 'DNS authentication is healthy, but Gmail placement is still landing in spam.', severity: 'high', confidence: 92, category: 'placement', relatedCheckIds: [spf?.id ?? '', dkim?.id ?? '', dmarc?.id ?? ''].filter(Boolean) });
+  }
+
+  if (dmarc?.status === 'fail' && gmailResults.filter((test) => test.result === 'spam').length >= 1) {
+    entries.push({ workspaceId, domainId, title: 'Fix DMARC first — likely root cause of placement failure', description: 'DMARC is failing and Gmail is already classifying messages as spam.', severity: 'critical', confidence: 96, category: 'placement', relatedCheckIds: [dmarc.id] });
   }
 
   if (entries.length) {

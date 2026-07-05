@@ -1,11 +1,27 @@
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { prisma } from '@/lib/prisma';
-import { runDnsScan, calculateScore, createRecommendations } from '@/lib/dns';
+import { calculateScore, createRecommendations } from '@/lib/dns';
 
-const connection = new IORedis(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
+const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
-export const placementQueue = new Queue('placement-tests', { connection });
+let placementQueue: Queue | null = null;
+let queueWarningShown = false;
+
+function getPlacementQueue() {
+  if (placementQueue) return placementQueue;
+
+  try {
+    placementQueue = new Queue('placement-tests', { connection: new IORedis(redisUrl) });
+    return placementQueue;
+  } catch (error) {
+    if (!queueWarningShown) {
+      queueWarningShown = true;
+      console.warn('Redis unavailable; placement jobs will run inline.', error);
+    }
+    return null;
+  }
+}
 
 export async function bootstrapSeedInboxes() {
   const existing = await prisma.seedInbox.count();
@@ -42,13 +58,21 @@ export async function queuePlacementTest({ workspaceId, domainId, mailboxId }: {
     },
   })));
 
-  await placementQueue.add('send-seed-test', { workspaceId, domainId, mailboxId, batchId, seedInboxIds: activeSeedInboxes.map((seedInbox) => seedInbox.id) });
+  const queue = getPlacementQueue();
+  if (queue) {
+    await queue.add('send-seed-test', { workspaceId, domainId, mailboxId, batchId, seedInboxIds: activeSeedInboxes.map((seedInbox) => seedInbox.id) });
+    return { blocked: false, batchId, queued: true };
+  }
 
-  return { blocked: false, batchId };
+  setTimeout(() => {
+    void processPlacementJob({ data: { workspaceId, domainId, mailboxId, batchId, seedInboxIds: activeSeedInboxes.map((seedInbox) => seedInbox.id) } });
+  }, 100);
+
+  return { blocked: false, batchId, queued: false };
 }
 
 export async function processPlacementJob(job: { data: { workspaceId: string; domainId: string; mailboxId: string; batchId: string; seedInboxIds: string[] } }) {
-  const { workspaceId, domainId, mailboxId, batchId, seedInboxIds } = job.data;
+  const { workspaceId, domainId, batchId } = job.data;
   const tests = await prisma.placementTest.findMany({ where: { testBatchId: batchId } });
   const results = ['inbox', 'promotions', 'spam', 'missing'];
 
@@ -60,17 +84,19 @@ export async function processPlacementJob(job: { data: { workspaceId: string; do
     });
   }
 
-  const latestChecks = await prisma.dnsScanCheck.findMany({ where: { dnsScanId: (await prisma.dnsScan.findFirst({ where: { domainId, workspaceId }, orderBy: { startedAt: 'desc' } }))?.id ?? '' } });
-  const score = calculateScore(latestChecks);
+  const latestDnsScan = await prisma.dnsScan.findFirst({ where: { domainId, workspaceId }, orderBy: { startedAt: 'desc' } });
+  const latestChecks = latestDnsScan ? await prisma.dnsScanCheck.findMany({ where: { dnsScanId: latestDnsScan.id } }) : [];
+  const placementTests = await prisma.placementTest.findMany({ where: { workspaceId, domainId, result: { not: 'pending' } }, orderBy: { sentAt: 'desc' }, take: 6 });
+  const score = calculateScore(latestChecks, placementTests);
   await prisma.scoreHistory.create({
     data: {
       workspaceId,
       domainId,
       scoreVersion: 'v2',
       totalScore: score.totalScore,
-      scoreBreakdown: { ...score.scoreBreakdown, placementPerformance: 100 },
+      scoreBreakdown: score.scoreBreakdown,
       rawSignals: score.rawSignals,
     },
   });
-  await createRecommendations({ workspaceId, domainId, checks: latestChecks });
+  await createRecommendations({ workspaceId, domainId, checks: latestChecks, placementTests });
 }
