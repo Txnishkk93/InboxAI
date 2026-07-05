@@ -10,13 +10,15 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@clerk/nextjs": "^5.32.0",
+    "@clerk/nextjs": "^5.7.6",
     "@prisma/client": "^5.15.0",
     "lucide-react": "^0.468.0",
     "next": "14.2.15",
+    "openai": "^6.45.0",
     "prisma": "^5.15.0",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "recharts": "^3.9.2"
   },
   "devDependencies": {
     "@types/node": "20.16.10",

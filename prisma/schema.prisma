@@ -20,6 +20,40 @@ enum WorkspaceRole {
   viewer
 }
 
+enum DnsScanStatus {
+  running
+  complete
+  failed
+}
+
+enum DnsCheckType {
+  spf
+  dkim
+  dmarc
+  mx
+  bimi
+  alignment
+}
+
+enum DnsCheckStatus {
+  pass
+  warn
+  fail
+}
+
+enum RecommendationSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum RecommendationStatus {
+  open
+  resolved
+  dismissed
+}
+
 model User {
   id           String   @id @default(cuid())
   clerkUserId  String   @unique
@@ -81,4 +115,60 @@ model Mailbox {
   domain       Domain    @relation(fields: [domainId], references: [id])
 
   @@map("mailboxes")
+}
+
+model DnsScan {
+  id            String          @id @default(cuid())
+  workspaceId    String
+  domainId       String
+  triggeredBy    String          @default("manual")
+  status         DnsScanStatus   @default(running)
+  startedAt      DateTime        @default(now())
+  completedAt    DateTime?
+  checks         DnsScanCheck[]
+
+  @@map("dns_scans")
+}
+
+model DnsScanCheck {
+  id           String         @id @default(cuid())
+  dnsScanId    String
+  checkType    DnsCheckType
+  status       DnsCheckStatus
+  rawValue     String?
+  parsedDetail Json?
+  createdAt    DateTime       @default(now())
+  dnsScan      DnsScan        @relation(fields: [dnsScanId], references: [id])
+
+  @@map("dns_scan_checks")
+}
+
+model ScoreHistory {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  domainId        String
+  scoreVersion    String
+  totalScore      Int
+  scoreBreakdown  Json
+  rawSignals      Json
+  calculatedAt    DateTime @default(now())
+
+  @@map("score_history")
+}
+
+model Recommendation {
+  id            String                  @id @default(cuid())
+  workspaceId   String
+  domainId      String
+  title         String
+  description   String
+  severity      RecommendationSeverity
+  confidence    Int
+  category      String
+  status        RecommendationStatus   @default(open)
+  createdAt     DateTime                @default(now())
+  resolvedAt    DateTime?
+  relatedCheckIds Json?
+
+  @@map("recommendations")
 }
