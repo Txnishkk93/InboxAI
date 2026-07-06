@@ -25,6 +25,7 @@ export function WorkspaceOnboarding({ workspaceId, initialDomains, initialMailbo
   async function addDomain(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
+    setMessage(null);
     const response = await fetch(`/api/workspaces/${workspaceId}/domains`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ domainName }) });
     const data = await response.json();
     setLoading(false);
@@ -32,7 +33,7 @@ export function WorkspaceOnboarding({ workspaceId, initialDomains, initialMailbo
       setDomains((current) => [data, ...current]);
       setDomainId(data.id);
       setDomainName('');
-      setMessage('Domain added');
+      setMessage('Domain added successfully.');
     }
   }
 
@@ -45,6 +46,7 @@ export function WorkspaceOnboarding({ workspaceId, initialDomains, initialMailbo
   async function addMailbox(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
+    setMessage(null);
     const response = await fetch(`/api/workspaces/${workspaceId}/mailboxes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ domainId, senderEmail, provider }) });
     const data = await response.json();
     setLoading(false);
@@ -52,7 +54,7 @@ export function WorkspaceOnboarding({ workspaceId, initialDomains, initialMailbo
       setMailboxes((current) => [data, ...current]);
       setSenderEmail('');
       setProvider('google');
-      setMessage('Mailbox added');
+      setMessage('Mailbox added successfully.');
     }
   }
 
@@ -62,57 +64,130 @@ export function WorkspaceOnboarding({ workspaceId, initialDomains, initialMailbo
   }
 
   return (
-    <div className="space-y-6">
-      {message ? <div className="rounded-md bg-emerald-600/20 p-3 text-sm text-emerald-300">{message}</div> : null}
-      <form onSubmit={addDomain} className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
-        <h3 className="text-lg font-semibold">Add a domain</h3>
-        <div className="mt-4 flex flex-col gap-3 md:flex-row">
-          <input value={domainName} onChange={(event) => setDomainName(event.target.value)} placeholder="example.com" className="flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm" />
-          <button type="submit" disabled={loading} className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">Add domain</button>
+    <div className="space-y-8 font-sans select-none">
+      {message ? (
+        <div className="rounded-md border border-border bg-surface-alt px-4 py-3 text-sm text-ink font-mono tracking-tight flex items-center justify-between">
+          <span>{message}</span>
+          <button type="button" onClick={() => setMessage(null)} className="text-ink-muted hover:text-ink font-semibold">&times;</button>
+        </div>
+      ) : null}
+
+      {/* Add Domain */}
+      <form onSubmit={addDomain} className="rounded-xl border border-border bg-surface-alt p-6 space-y-4">
+        <div>
+          <h3 className="text-base font-semibold text-ink">Add a Domain</h3>
+          <p className="text-xs text-ink-muted font-mono uppercase mt-0.5 tracking-wider">Register domain identity for diagnostic queries</p>
+        </div>
+        <div className="flex flex-col gap-3 md:flex-row">
+          <input
+            value={domainName}
+            onChange={(event) => setDomainName(event.target.value)}
+            placeholder="example.com"
+            className="flex-1 rounded-md border border-border bg-surface px-4 py-2.5 text-base text-ink focus:outline-none focus:ring-2 focus:ring-ink min-h-[44px]"
+          />
+          <button
+            type="submit"
+            disabled={loading || !domainName.trim()}
+            className="rounded-md bg-ink text-surface px-6 py-2.5 text-sm font-semibold tracking-wide shadow transition hover:bg-ink-muted disabled:opacity-60 min-h-[44px] active:scale-95"
+          >
+            Add Domain
+          </button>
         </div>
       </form>
 
-      <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
-        <h3 className="text-lg font-semibold">Domains</h3>
-        <ul className="mt-4 space-y-2">
-          {domains.map((domain) => (
-            <li key={domain.id} className="flex items-center justify-between rounded-md border border-slate-800 px-3 py-2 text-sm">
-              <span>{domain.domainName}</span>
-              <button onClick={() => deleteDomain(domain.id)} className="text-rose-400">Delete</button>
-            </li>
-          ))}
-        </ul>
+      {/* Domain List */}
+      <div className="rounded-xl border border-border bg-surface-alt p-6 space-y-4">
+        <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-ink-muted">Monitored Domains ({domains.length})</h3>
+        {domains.length === 0 ? (
+          <p className="text-sm text-ink-muted leading-relaxed font-mono">0 ACTIVE DOMAINS CONFIGURED</p>
+        ) : (
+          <ul className="space-y-2 font-mono text-sm">
+            {domains.map((domain) => (
+              <li key={domain.id} className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-3">
+                <span className="font-semibold text-ink">{domain.domainName}</span>
+                <button
+                  type="button"
+                  onClick={() => deleteDomain(domain.id)}
+                  className="text-accent-critical font-bold uppercase tracking-wider text-xs hover:underline min-h-[44px]"
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
-      <form onSubmit={addMailbox} className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
-        <h3 className="text-lg font-semibold">Add a sender mailbox</h3>
-        <div className="mt-4 grid gap-3 md:grid-cols-[1fr_180px_140px]">
-          <input value={senderEmail} onChange={(event) => setSenderEmail(event.target.value)} placeholder="sender@example.com" className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm" />
-          <select value={provider} onChange={(event) => setProvider(event.target.value)} className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm">
+      {/* Add Mailbox */}
+      <form onSubmit={addMailbox} className="rounded-xl border border-border bg-surface-alt p-6 space-y-4">
+        <div>
+          <h3 className="text-base font-semibold text-ink">Add a Sender Mailbox</h3>
+          <p className="text-xs text-ink-muted font-mono uppercase mt-0.5 tracking-wider">Configure associated mailbox outbound addresses</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-[1fr_180px_160px]">
+          <input
+            value={senderEmail}
+            onChange={(event) => setSenderEmail(event.target.value)}
+            placeholder="sender@example.com"
+            className="rounded-md border border-border bg-surface px-4 py-2.5 text-base text-ink focus:outline-none focus:ring-2 focus:ring-ink min-h-[44px]"
+          />
+          <select
+            value={provider}
+            onChange={(event) => setProvider(event.target.value)}
+            className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink min-h-[44px] cursor-pointer"
+          >
             <option value="google">Google</option>
             <option value="outlook">Outlook</option>
             <option value="other">Other</option>
           </select>
-          <select value={domainId} onChange={(event) => setDomainId(event.target.value)} className="rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm">
+          <select
+            value={domainId}
+            onChange={(event) => setDomainId(event.target.value)}
+            className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink min-h-[44px] cursor-pointer"
+          >
             <option value="">Select domain</option>
-            {domains.map((domain) => <option key={domain.id} value={domain.id}>{domain.domainName}</option>)}
+            {domains.map((domain) => (
+              <option key={domain.id} value={domain.id}>
+                {domain.domainName}
+              </option>
+            ))}
           </select>
         </div>
-        <div className="mt-4">
-          <button type="submit" disabled={loading} className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">Add sender</button>
+        <div className="pt-2">
+          <button
+            type="submit"
+            disabled={loading || !senderEmail.trim() || !domainId}
+            className="rounded-md bg-ink text-surface px-6 py-2.5 text-sm font-semibold tracking-wide shadow transition hover:bg-ink-muted disabled:opacity-60 min-h-[44px] active:scale-95"
+          >
+            Add Sender
+          </button>
         </div>
       </form>
 
-      <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
-        <h3 className="text-lg font-semibold">Sender mailboxes</h3>
-        <ul className="mt-4 space-y-2">
-          {mailboxes.map((mailbox) => (
-            <li key={mailbox.id} className="flex items-center justify-between rounded-md border border-slate-800 px-3 py-2 text-sm">
-              <span>{mailbox.senderEmail} • {mailbox.provider}</span>
-              <button onClick={() => deleteMailbox(mailbox.id)} className="text-rose-400">Delete</button>
-            </li>
-          ))}
-        </ul>
+      {/* Mailbox List */}
+      <div className="rounded-xl border border-border bg-surface-alt p-6 space-y-4">
+        <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-ink-muted">Active Sender Mailboxes ({mailboxes.length})</h3>
+        {mailboxes.length === 0 ? (
+          <p className="text-sm text-ink-muted leading-relaxed font-mono">0 ACTIVE SENDER MAILBOXES CONFIGURED</p>
+        ) : (
+          <ul className="space-y-2 font-mono text-sm">
+            {mailboxes.map((mailbox) => (
+              <li key={mailbox.id} className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-3">
+                <span>
+                  <strong className="text-ink">{mailbox.senderEmail}</strong>
+                  <span className="text-ink-muted ml-2">({mailbox.provider})</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => deleteMailbox(mailbox.id)}
+                  className="text-accent-critical font-bold uppercase tracking-wider text-xs hover:underline min-h-[44px]"
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { promisify } from 'node:util';
 import dns from 'node:dns';
+import { ENV } from '@/lib/env';
+import { DnsCheckType, DnsCheckStatus } from '@prisma/client';
 
 const resolve4 = promisify(dns.resolve4);
 const resolveMx = promisify(dns.resolveMx);
@@ -92,39 +94,45 @@ export async function runDnsScan({ workspaceId, domainId }: { workspaceId: strin
     lookupBimi(domainName),
   ]);
 
-  const checks = [
+  const checks: {
+    dnsScanId: string;
+    checkType: DnsCheckType;
+    status: DnsCheckStatus;
+    rawValue: string | null;
+    parsedDetail: any;
+  }[] = [
     {
       dnsScanId: scan.id,
       checkType: 'spf',
-      status: !spf ? 'fail' : spf.lookupDepth > 10 ? 'warn' : 'pass',
+      status: (!spf ? 'fail' : spf.lookupDepth > 10 ? 'warn' : 'pass') as DnsCheckStatus,
       rawValue: spf?.value ?? null,
       parsedDetail: spf ? { lookupDepth: spf.lookupDepth } : null,
     },
     {
       dnsScanId: scan.id,
       checkType: 'dkim',
-      status: !dkim ? 'fail' : 'pass',
+      status: (!dkim ? 'fail' : 'pass') as DnsCheckStatus,
       rawValue: dkim?.value ?? null,
       parsedDetail: dkim ? { selector: dkim.selector } : null,
     },
     {
       dnsScanId: scan.id,
       checkType: 'dmarc',
-      status: !dmarc ? 'fail' : /p=none/i.test(dmarc.value) ? 'warn' : 'pass',
+      status: (!dmarc ? 'fail' : /p=none/i.test(dmarc.value) ? 'warn' : 'pass') as DnsCheckStatus,
       rawValue: dmarc?.value ?? null,
       parsedDetail: dmarc ? { policy: /p=none/i.test(dmarc.value) ? 'none' : 'quarantine/reject' } : null,
     },
     {
       dnsScanId: scan.id,
       checkType: 'mx',
-      status: !mx ? 'fail' : 'pass',
+      status: (!mx ? 'fail' : 'pass') as DnsCheckStatus,
       rawValue: mx?.value ?? null,
       parsedDetail: mx ? { records: mx.value } : null,
     },
     {
       dnsScanId: scan.id,
       checkType: 'bimi',
-      status: !bimi ? 'fail' : 'pass',
+      status: (!bimi ? 'fail' : 'pass') as DnsCheckStatus,
       rawValue: bimi?.value ?? null,
       parsedDetail: bimi ? { present: true } : null,
     },
@@ -135,7 +143,7 @@ export async function runDnsScan({ workspaceId, domainId }: { workspaceId: strin
   checks.push({
     dnsScanId: scan.id,
     checkType: 'alignment',
-    status: alignmentStatus,
+    status: alignmentStatus as DnsCheckStatus,
     rawValue: `${spf?.value ?? 'missing'} | ${dkim?.value ?? 'missing'}`,
     parsedDetail: { spfPresent: Boolean(spf), dkimPresent: Boolean(dkim), fromDomain: domainFrom },
   });
@@ -146,6 +154,10 @@ export async function runDnsScan({ workspaceId, domainId }: { workspaceId: strin
   ]);
 
   const latestChecks = await prisma.dnsScanCheck.findMany({ where: { dnsScanId: scan.id } });
+  const previousScan = await prisma.dnsScan.findFirst({ where: { domainId, workspaceId, id: { not: scan.id } }, orderBy: { startedAt: 'desc' } });
+  const previousChecks = previousScan ? await prisma.dnsScanCheck.findMany({ where: { dnsScanId: previousScan.id } }) : [];
+  const previousScoreRecord = previousScan ? await prisma.scoreHistory.findFirst({ where: { workspaceId, domainId }, orderBy: { calculatedAt: 'desc' } }) : null;
+  const previousScore = previousScoreRecord?.totalScore ?? null;
   const score = calculateScore(latestChecks, []);
   await prisma.scoreHistory.create({
     data: {
@@ -158,6 +170,10 @@ export async function runDnsScan({ workspaceId, domainId }: { workspaceId: strin
     },
   });
   await createRecommendations({ workspaceId, domainId, checks: latestChecks });
+  await import('@/lib/alerts').then(({ evaluateScoreDrop, evaluateDnsCheckFailures }) => Promise.all([
+    evaluateScoreDrop({ workspaceId, domainId, currentScore: score.totalScore, previousScore }),
+    evaluateDnsCheckFailures({ workspaceId, domainId, currentChecks: latestChecks, previousChecks }),
+  ]));
 
   return { scan, duplicate: false };
 }
@@ -247,7 +263,7 @@ export async function createRecommendations({ workspaceId, domainId, checks, pla
 }
 
 export async function getExplanationForRecommendation({ title, description, severity, relatedChecks }: { title: string; description: string; severity: string; relatedChecks: Array<{ checkType: string; status: string }> }) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = ENV.openAiApiKey;
   if (!apiKey) {
     return `What\'s wrong: ${title}.\nWhy it matters: ${description}.\nWhat to do next: Raise the ${severity} issue in your DNS configuration and review the related checks (${relatedChecks.map((check) => `${check.checkType}:${check.status}`).join(', ')}).`;
   }

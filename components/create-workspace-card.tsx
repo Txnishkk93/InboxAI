@@ -32,21 +32,31 @@ export function CreateWorkspaceCard() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
-      <h3 className="text-lg font-semibold">Create your first workspace</h3>
-      <p className="mt-2 text-sm text-slate-400">Give it a name and start onboarding your domains.</p>
-      <div className="mt-4 flex flex-col gap-3 md:flex-row">
+    <form onSubmit={handleSubmit} className="rounded-xl border border-border bg-surface-alt p-6 space-y-4 font-sans shadow-sm select-none">
+      <div>
+        <h3 className="text-base font-semibold text-ink">Create Workspace</h3>
+        <p className="text-xs text-ink-muted font-mono uppercase mt-0.5 tracking-wider">Configure a new diagnostic tenant workspace</p>
+      </div>
+      <div className="flex flex-col gap-3 md:flex-row">
         <input
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="e.g. Marketing Team"
-          className="flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
+          className="flex-1 rounded-md border border-border bg-surface px-4 py-2.5 text-base text-ink focus:outline-none focus:ring-2 focus:ring-ink min-h-[44px]"
         />
-        <button type="submit" disabled={loading} className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
-          {loading ? 'Creating…' : 'Create workspace'}
+        <button
+          type="submit"
+          disabled={loading || !name.trim()}
+          className="rounded-md bg-ink text-surface px-6 py-2.5 text-sm font-semibold tracking-wide shadow transition hover:bg-ink-muted disabled:opacity-60 min-h-[44px] active:scale-95 border border-transparent"
+        >
+          {loading ? 'Creating...' : 'Create Workspace'}
         </button>
       </div>
-      {error ? <p className="mt-3 text-sm text-rose-400">{error}</p> : null}
+      {error ? (
+        <p className="text-xs font-mono text-accent-critical font-bold uppercase tracking-wider">
+          {error}
+        </p>
+      ) : null}
     </form>
   );
 }

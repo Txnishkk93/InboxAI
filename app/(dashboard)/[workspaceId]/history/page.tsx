@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUserRecord } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { DnsDashboard } from '@/components/dns-dashboard';
+import { HistoryDashboard } from '@/components/history-dashboard';
 
 export default async function HistoryPage({ params }: { params: { workspaceId: string } }) {
   const user = await getCurrentUserRecord();
@@ -14,7 +14,7 @@ export default async function HistoryPage({ params }: { params: { workspaceId: s
 
   return (
     <div className="space-y-6">
-      <DnsDashboard workspaceId={params.workspaceId} domains={domains} />
+      <HistoryDashboard workspaceId={params.workspaceId} domains={domains} />
     </div>
   );
 }

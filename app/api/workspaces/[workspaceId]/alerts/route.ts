@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserRecord } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { RecommendationStatus } from '@prisma/client';
 
 export async function GET(request: Request, { params }: { params: { workspaceId: string } }) {
   const user = await getCurrentUserRecord();
@@ -12,14 +11,11 @@ export async function GET(request: Request, { params }: { params: { workspaceId:
 
   const { searchParams } = new URL(request.url);
   const domainId = searchParams.get('domainId');
-  const where = domainId
-    ? { workspaceId: params.workspaceId, domainId, status: { not: 'dismissed' as RecommendationStatus } }
-    : { workspaceId: params.workspaceId, status: { not: 'dismissed' as RecommendationStatus } };
-
-  const recommendations = await prisma.recommendation.findMany({
-    where,
-    orderBy: [{ severity: 'desc' }, { createdAt: 'desc' }],
+  const alerts = await prisma.alert.findMany({
+    where: { workspaceId: params.workspaceId, ...(domainId ? { domainId } : {}) },
+    orderBy: { triggeredAt: 'desc' },
+    take: 5,
   });
 
-  return NextResponse.json(recommendations);
+  return NextResponse.json(alerts);
 }

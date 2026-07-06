@@ -65,6 +65,25 @@ enum PlacementResult {
 enum SeedInboxProvider {
   gmail
   outlook
+  yahoo
+  custom
+}
+
+enum AlertType {
+  score_drop
+  placement_drop
+  dns_check_failed
+}
+
+enum AlertChannel {
+  email
+  slack
+}
+
+enum AlertStatus {
+  pending
+  sent
+  failed
 }
 
 model User {
@@ -79,13 +98,16 @@ model User {
 }
 
 model Workspace {
-  id           String   @id @default(cuid())
-  name         String
-  createdAt    DateTime @default(now())
-  ownerId      String
-  memberships  WorkspaceMembership[]
-  domains      Domain[]
-  mailboxes    Mailbox[]
+  id                String   @id @default(cuid())
+  name              String
+  createdAt         DateTime @default(now())
+  ownerId           String
+  slackWebhookUrl   String?
+  alertEmail        String?
+  memberships       WorkspaceMembership[]
+  domains           Domain[]
+  mailboxes         Mailbox[]
+  alerts            Alert[]
 
   @@map("workspaces")
 }
@@ -112,6 +134,7 @@ model Domain {
   deletedAt    DateTime?
   workspace    Workspace @relation(fields: [workspaceId], references: [id])
   mailboxes    Mailbox[]
+  alerts       Alert[]
 
   @@map("domains")
 }
@@ -212,4 +235,33 @@ model PlacementTest {
   folderRaw           String?
 
   @@map("placement_tests")
+}
+
+model Alert {
+  id           String       @id @default(cuid())
+  workspaceId  String
+  domainId     String
+  type         AlertType
+  severity     String
+  message      String
+  triggeredAt  DateTime     @default(now())
+  channel      AlertChannel @default(email)
+  deliveredAt  DateTime?
+  status       AlertStatus  @default(pending)
+  dedupeKey    String
+  createdAt    DateTime     @default(now())
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id])
+  domain       Domain       @relation(fields: [domainId], references: [id])
+
+  @@map("alerts")
+}
+
+model ProviderProfile {
+  id                    String   @id @default(cuid())
+  provider              String
+  notes                 String?
+  activeSeedInboxCount Int      @default(0)
+  createdAt             DateTime @default(now())
+
+  @@map("provider_profiles")
 }

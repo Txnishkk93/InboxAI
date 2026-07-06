@@ -3,9 +3,75 @@
 @tailwind utilities;
 
 :root {
+  --ink: #111111;
+  --ink-muted: #666666;
+  --ink-faint: #dcdcdc;
+  --surface: #ffffff;
+  --surface-alt: #f6f6f6;
+  --border: #e2e2e2;
+  --border-strong: #8c8c8c;
+  --accent-critical: #9e2a2b; /* deep rust/red */
   color-scheme: light;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #eeeeee;
+    --ink-muted: #999999;
+    --ink-faint: #262626;
+    --surface: #0a0a0a;
+    --surface-alt: #121212;
+    --border: #222222;
+    --border-strong: #555555;
+    --accent-critical: #e63946; /* deep rust/red */
+    color-scheme: dark;
+  }
+}
+
 body {
-  @apply bg-slate-950 text-slate-100 min-h-screen;
+  background-color: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-ibm-plex-sans), system-ui, sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Staggered entrance animation */
+@keyframes bento-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-bento {
+  animation: bento-fade-in 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+/* Faint dot pattern overlay for spam cells */
+.dot-pattern {
+  background-image: radial-gradient(currentColor 1px, transparent 1px);
+  background-size: 6px 6px;
+}
+
+/* Custom scrollbar for diagnostics precision */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--surface-alt);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-muted);
 }

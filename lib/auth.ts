@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { ENV } from '@/lib/env';
 
 export async function getCurrentUserRecord() {
   const { userId } = await auth();
@@ -9,7 +10,7 @@ export async function getCurrentUserRecord() {
   if (existing) return existing;
 
   const clerkUser = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
-    headers: { Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}` },
+    headers: { Authorization: `Bearer ${ENV.clerkSecretKey}` },
   }).then((res) => res.json());
 
   return prisma.user.upsert({
