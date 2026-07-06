@@ -203,7 +203,7 @@ export function PlacementDashboard({ workspaceId, domains, mailboxes }: { worksp
                             strokeWidth={1.2}
                             dot={false}
                           />
-                        </Line>
+                        </LineChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
