@@ -10,6 +10,10 @@ const navItems = [
   { href: 'inbox-placement', label: 'Inbox Placement' },
   { href: 'recommendations', label: 'Recommendations' },
   { href: 'history', label: 'History' },
+  { href: 'alerts', label: 'Alerts' },
+  { href: 'domains', label: 'Domains' },
+  { href: 'mailboxes', label: 'Mailboxes' },
+  { href: 'team', label: 'Team' },
   { href: 'settings', label: 'Settings' },
 ];
 

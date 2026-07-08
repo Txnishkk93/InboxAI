@@ -3,7 +3,13 @@ import { getCurrentUserRecord } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { DnsDashboard } from '@/components/dns-dashboard';
 
-export default async function DomainHealthPage({ params }: { params: { workspaceId: string } }) {
+export default async function DomainHealthPage({
+  params,
+  searchParams,
+}: {
+  params: { workspaceId: string };
+  searchParams: { domainId?: string };
+}) {
   const user = await getCurrentUserRecord();
   if (!user) redirect('/sign-in');
 
@@ -14,7 +20,7 @@ export default async function DomainHealthPage({ params }: { params: { workspace
 
   return (
     <div className="space-y-6">
-      <DnsDashboard workspaceId={params.workspaceId} domains={domains} />
+      <DnsDashboard workspaceId={params.workspaceId} domains={domains} initialDomainId={searchParams.domainId} />
     </div>
   );
 }

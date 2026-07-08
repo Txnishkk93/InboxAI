@@ -13,12 +13,31 @@ export async function getCurrentUserRecord() {
     headers: { Authorization: `Bearer ${ENV.clerkSecretKey}` },
   }).then((res) => res.json());
 
+  const email = clerkUser.email_addresses?.[0]?.email_address ?? null;
+  if (email) {
+    const existingByEmail = await prisma.user.findFirst({
+      where: {
+        email,
+        clerkUserId: { startsWith: 'invited_' },
+      },
+    });
+    if (existingByEmail) {
+      return prisma.user.update({
+        where: { id: existingByEmail.id },
+        data: {
+          clerkUserId: userId,
+          name: `${clerkUser.first_name ?? ''} ${clerkUser.last_name ?? ''}`.trim() || null,
+        },
+      });
+    }
+  }
+
   return prisma.user.upsert({
     where: { clerkUserId: userId },
     update: {},
     create: {
       clerkUserId: userId,
-      email: clerkUser.email_addresses?.[0]?.email_address ?? null,
+      email,
       name: `${clerkUser.first_name ?? ''} ${clerkUser.last_name ?? ''}`.trim() || null,
     },
   });

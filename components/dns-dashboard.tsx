@@ -10,8 +10,8 @@ type Recommendation = { id: string; title: string; description: string; severity
 type ScorePoint = { id: string; totalScore: number; calculatedAt: string };
 type AlertMarker = { id: string; triggeredAt: string; type: string; severity: string };
 
-export function DnsDashboard({ workspaceId, domains }: { workspaceId: string; domains: Domain[] }) {
-  const [selectedDomainId, setSelectedDomainId] = useState(domains[0]?.id ?? '');
+export function DnsDashboard({ workspaceId, domains, initialDomainId }: { workspaceId: string; domains: Domain[]; initialDomainId?: string }) {
+  const [selectedDomainId, setSelectedDomainId] = useState(initialDomainId || (domains[0]?.id ?? ''));
   const [checks, setChecks] = useState<Check[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [history, setHistory] = useState<ScorePoint[]>([]);

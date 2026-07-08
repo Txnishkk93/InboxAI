@@ -20,6 +20,11 @@ export function startPlacementWorker() {
         return;
       }
 
+      if (job.name === 'classify-seed-test') {
+        await import('@/lib/placement').then(({ processClassificationJob }) => processClassificationJob(job as any));
+        return;
+      }
+
       await processPlacementJob(job as any);
     }, { connection: new IORedis(redisUrl) as any });
   } catch (error) {
