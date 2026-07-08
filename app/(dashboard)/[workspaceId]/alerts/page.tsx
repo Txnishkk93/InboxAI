@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUserRecord } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { AlertsDashboard } from '@/components/alerts-dashboard';
+import { getAlertRules } from '@/lib/custom-store';
 
 export default async function AlertsPage({ params }: { params: { workspaceId: string } }) {
   const user = await getCurrentUserRecord();
@@ -10,7 +11,7 @@ export default async function AlertsPage({ params }: { params: { workspaceId: st
   const membership = await prisma.workspaceMembership.findFirst({ where: { userId: user.id, workspaceId: params.workspaceId } });
   if (!membership) redirect('/sign-in');
 
-  const [alerts, domains] = await Promise.all([
+  const [alerts, domains, rules] = await Promise.all([
     prisma.alert.findMany({
       where: { workspaceId: params.workspaceId },
       include: { domain: true },
@@ -20,6 +21,7 @@ export default async function AlertsPage({ params }: { params: { workspaceId: st
       where: { workspaceId: params.workspaceId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
     }),
+    getAlertRules(params.workspaceId),
   ]);
 
   const formattedAlerts = alerts.map((alert) => ({
@@ -46,6 +48,7 @@ export default async function AlertsPage({ params }: { params: { workspaceId: st
       workspaceId={params.workspaceId}
       initialAlerts={formattedAlerts}
       domains={formattedDomains}
+      initialRules={rules}
     />
   );
 }

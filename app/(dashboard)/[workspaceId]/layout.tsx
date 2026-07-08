@@ -8,6 +8,7 @@ const navItems = [
   { href: 'overview', label: 'Overview' },
   { href: 'domain-health', label: 'Domain Health' },
   { href: 'inbox-placement', label: 'Inbox Placement' },
+  { href: 'content-test', label: 'Content Test' },
   { href: 'recommendations', label: 'Recommendations' },
   { href: 'history', label: 'History' },
   { href: 'alerts', label: 'Alerts' },

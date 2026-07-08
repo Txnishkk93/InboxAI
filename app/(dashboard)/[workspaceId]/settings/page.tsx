@@ -3,6 +3,7 @@ import { getCurrentUserRecord } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { WorkspaceSettingsForm } from '@/components/workspace-settings-form';
 import { WorkspaceOnboarding } from '@/components/workspace-onboarding';
+import { getApiKeys } from '@/lib/custom-store';
 
 export default async function SettingsPage({ params }: { params: { workspaceId: string } }) {
   const user = await getCurrentUserRecord();
@@ -15,6 +16,7 @@ export default async function SettingsPage({ params }: { params: { workspaceId: 
   
   const domains = await prisma.domain.findMany({ where: { workspaceId: params.workspaceId, deletedAt: null }, orderBy: { createdAt: 'desc' } });
   const mailboxes = await prisma.mailbox.findMany({ where: { workspaceId: params.workspaceId, deletedAt: null }, orderBy: { createdAt: 'desc' } });
+  const apiKeys = await getApiKeys(params.workspaceId);
 
   return (
     <div className="space-y-6 font-sans">
@@ -30,6 +32,7 @@ export default async function SettingsPage({ params }: { params: { workspaceId: 
             workspaceId={params.workspaceId}
             initialAlertEmail={workspace?.alertEmail ?? ''}
             initialSlackWebhookUrl={workspace?.slackWebhookUrl ?? ''}
+            initialApiKeys={apiKeys}
           />
         </div>
       </div>
