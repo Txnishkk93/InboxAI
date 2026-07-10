@@ -130,6 +130,7 @@ export function DomainsDashboard({
           </div>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
+            data-testid="add-domain-btn"
             className="rounded-md bg-ink text-surface px-5 py-2 text-sm font-semibold tracking-wide shadow transition hover:bg-ink-muted disabled:opacity-60 min-h-[44px] active:scale-95 border border-transparent"
           >
             {showAddForm ? 'Cancel Add' : 'Add Domain'}
@@ -201,6 +202,7 @@ export function DomainsDashboard({
                 {domains.map((domain) => (
                   <tr
                     key={domain.id}
+                    data-testid="domain-row"
                     className="border-b border-border/60 hover:bg-surface transition-colors duration-150 group cursor-pointer"
                   >
                     <td className="py-4 px-4 font-mono font-medium text-ink text-sm">

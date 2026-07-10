@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { emitReticleSignal } from '@/app/reticle-dev';
 
 type ApiKeyItem = {
   id: string;
@@ -76,6 +77,8 @@ export function WorkspaceSettingsForm({
         throw new Error('Failed to send test alert.');
       }
       setMessage('Test alert queued successfully.');
+      // Emit alert test sent signal
+      await emitReticleSignal('alert:test-sent', { workspaceId });
     } catch (err: any) {
       setError(err.message ?? 'Failed to send test alert.');
     } finally {
@@ -202,6 +205,7 @@ export function WorkspaceSettingsForm({
             type="button"
             onClick={handleSendTest}
             disabled={loading}
+            data-testid="alert-test-sent"
             className="rounded-md border border-border bg-surface-alt px-6 py-2.5 text-sm font-semibold text-ink-muted hover:text-ink hover:border-border-strong disabled:opacity-60 transition min-h-[44px] active:scale-95"
           >
             Send Test Alert

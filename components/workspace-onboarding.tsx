@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { emitReticleSignal } from '@/app/reticle-dev';
 
 type Domain = { id: string; domainName: string };
 type Mailbox = { id: string; senderEmail: string; provider: string };
@@ -34,6 +35,8 @@ export function WorkspaceOnboarding({ workspaceId, initialDomains, initialMailbo
       setDomainId(data.id);
       setDomainName('');
       setMessage('Domain added successfully.');
+      // Emit domain added signal
+      await emitReticleSignal('domain:added', { domainId: data.id, domainName: data.domainName });
     }
   }
 
@@ -41,6 +44,8 @@ export function WorkspaceOnboarding({ workspaceId, initialDomains, initialMailbo
     await fetch(`/api/workspaces/${workspaceId}/domains/${domainId}`, { method: 'DELETE' });
     setDomains((current) => current.filter((domain) => domain.id !== domainId));
     setMailboxes((current) => current.filter((mailbox) => mailbox.id !== mailboxes.find((m) => m.id === mailbox.id)?.id));
+    // Emit domain deleted signal
+    await emitReticleSignal('domain:deleted', { domainId });
   }
 
   async function addMailbox(event: React.FormEvent) {
@@ -55,6 +60,8 @@ export function WorkspaceOnboarding({ workspaceId, initialDomains, initialMailbo
       setSenderEmail('');
       setProvider('google');
       setMessage('Mailbox added successfully.');
+      // Emit mailbox added signal
+      await emitReticleSignal('mailbox:added', { mailboxId: data.id, senderEmail: data.senderEmail });
     }
   }
 
@@ -88,6 +95,7 @@ export function WorkspaceOnboarding({ workspaceId, initialDomains, initialMailbo
           <button
             type="submit"
             disabled={loading || !domainName.trim()}
+            data-testid="add-domain-btn"
             className="rounded-md bg-ink text-surface px-6 py-2.5 text-sm font-semibold tracking-wide shadow transition hover:bg-ink-muted disabled:opacity-60 min-h-[44px] active:scale-95"
           >
             Add Domain
@@ -157,6 +165,7 @@ export function WorkspaceOnboarding({ workspaceId, initialDomains, initialMailbo
           <button
             type="submit"
             disabled={loading || !senderEmail.trim() || !domainId}
+            data-testid="add-sender-btn"
             className="rounded-md bg-ink text-surface px-6 py-2.5 text-sm font-semibold tracking-wide shadow transition hover:bg-ink-muted disabled:opacity-60 min-h-[44px] active:scale-95"
           >
             Add Sender

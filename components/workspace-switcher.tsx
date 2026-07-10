@@ -22,7 +22,10 @@ export function WorkspaceSwitcher({
 
   if (workspaces.length <= 1) {
     return (
-      <div className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 font-medium">
+      <div 
+        data-testid="workspace-switcher"
+        className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 font-medium"
+      >
         {currentWorkspaceName}
       </div>
     );
@@ -30,6 +33,7 @@ export function WorkspaceSwitcher({
 
   return (
     <select
+      data-testid="workspace-switcher"
       value={currentWorkspaceId}
       onChange={(e) => {
         const id = e.target.value;

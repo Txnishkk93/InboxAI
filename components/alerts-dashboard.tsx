@@ -262,6 +262,7 @@ export function AlertsDashboard({
                     {filteredAlerts.map((alert) => (
                       <tr
                         key={alert.id}
+                        data-testid="alert-row"
                         className="border-b border-border/60 hover:bg-surface transition-colors duration-150 group font-sans text-sm"
                       >
                         <td className="py-4 px-4 font-mono text-xs text-ink-muted whitespace-nowrap">

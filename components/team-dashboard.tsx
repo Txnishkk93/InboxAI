@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { emitReticleSignal } from '@/app/reticle-dev';
 
 type MemberItem = {
   id: string;
@@ -89,6 +90,8 @@ export function TeamDashboard({
       setInviteEmail('');
       setInviteRole('member');
       setShowInviteForm(false);
+      // Emit member invited signal
+      await emitReticleSignal('member:invited', { email: inviteEmail.trim(), role: inviteRole });
     } catch (err: any) {
       setError(err.message || 'An error occurred.');
     } finally {
@@ -194,6 +197,7 @@ export function TeamDashboard({
           {isAuthorized && (
             <button
               onClick={() => setShowInviteForm(!showInviteForm)}
+              data-testid="invite-member-btn"
               className="rounded-md bg-ink text-surface px-5 py-2 text-sm font-semibold tracking-wide shadow transition hover:bg-ink-muted disabled:opacity-60 min-h-[44px] active:scale-95 border border-transparent"
             >
               {showInviteForm ? 'Cancel Invite' : 'Invite Member'}

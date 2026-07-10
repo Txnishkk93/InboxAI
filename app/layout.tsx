@@ -3,6 +3,7 @@ import './globals.css';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Providers } from './providers';
 import { ENV } from '@/lib/env';
+import { ReticleDev } from './reticle-dev';
 import { Instrument_Serif, IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
 
 const instrumentSerif = Instrument_Serif({
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <html lang="en" className={`${instrumentSerif.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable}`}>
         <body>
           <Providers>{children}</Providers>
+          <ReticleDev />
         </body>
       </html>
     </ClerkProvider>

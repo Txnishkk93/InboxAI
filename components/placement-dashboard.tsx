@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { emitReticleSignal } from '@/app/reticle-dev';
 
 type Domain = { id: string; domainName: string };
 type Mailbox = { id: string; senderEmail: string };
@@ -75,6 +76,10 @@ export function PlacementDashboard({ workspaceId, domains, mailboxes }: { worksp
     if (!selectedDomainId || !selectedMailboxId) return;
     setRunning(true);
     setMessage(null);
+    
+    // Emit placement test started signal
+    await emitReticleSignal('placement-test:started', { domainId: selectedDomainId, mailboxId: selectedMailboxId });
+    
     try {
       const response = await fetch(`/api/workspaces/${workspaceId}/placement`, {
         method: 'POST',
@@ -87,8 +92,10 @@ export function PlacementDashboard({ workspaceId, domains, mailboxes }: { worksp
       } else {
         setMessage('Placement test batch triggered.');
         await refetch();
+        // Emit placement test completed signal
+        await emitReticleSignal('placement-test:completed', { domainId: selectedDomainId, mailboxId: selectedMailboxId });
       }
-    } catch {
+    } catch (error) {
       setMessage('Failed to initiate placement test.');
     } finally {
       setRunning(false);
@@ -145,6 +152,7 @@ export function PlacementDashboard({ workspaceId, domains, mailboxes }: { worksp
             <button
               onClick={runPlacementTest}
               disabled={running || !selectedDomainId || !selectedMailboxId || isLoading}
+              data-testid="run-placement-test-btn"
               className="rounded-md bg-ink text-surface px-5 py-2 text-sm font-semibold tracking-wide shadow transition hover:bg-ink-muted disabled:opacity-60 min-h-[44px] active:scale-95 border border-transparent"
             >
               {running ? 'Test in progress' : 'Run Placement Test'}

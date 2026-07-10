@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { emitReticleSignal } from '@/app/reticle-dev';
 
 type Recommendation = {
   id: string;
@@ -82,6 +83,13 @@ export function RecommendationsList({
     setRecommendations((prev) =>
       prev.map((rec) => (rec.id === recommendationId ? { ...rec, status } : rec))
     );
+    
+    // Emit signal based on status
+    if (status === 'resolved') {
+      await emitReticleSignal('recommendation:resolved', { recommendationId });
+    } else if (status === 'dismissed') {
+      await emitReticleSignal('recommendation:dismissed', { recommendationId });
+    }
   }
 
   function renderExplanation(text: string) {
@@ -154,6 +162,7 @@ export function RecommendationsList({
         return (
           <div
             key={recommendation.id}
+            data-testid="recommendation-card"
             className={`rounded-xl border bg-surface transition-all duration-150 shadow-sm ${
               isCritical
                 ? 'border-l-4 border-l-accent-critical border-border'

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { LineChart, Line, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { RecommendationsList } from './recommendations-list';
+import { emitReticleSignal } from '@/app/reticle-dev';
 
 type Check = { id: string; checkType: string; status: string; rawValue?: string | null; parsedDetail?: any; createdAt: string };
 type Domain = { id: string; domainName: string };
@@ -53,13 +54,26 @@ export function DnsDashboard({ workspaceId, domains, initialDomainId }: { worksp
     if (!selectedDomainId) return;
     setScanPending(true);
     setMessage(null);
+    
+    // Emit scan started signal
+    await emitReticleSignal('scan:started', { domainId: selectedDomainId });
+    
     try {
       const response = await fetch(`/api/workspaces/${workspaceId}/domains/${selectedDomainId}/scan`, { method: 'POST' });
       const data = await response.json();
       setMessage(data.duplicate ? 'Scan already in progress.' : 'Diagnostic scan complete.');
-      if (response.ok) await loadData(selectedDomainId);
-    } catch {
+      if (response.ok) {
+        await loadData(selectedDomainId);
+        // Emit scan completed signal
+        await emitReticleSignal('scan:completed', { domainId: selectedDomainId });
+      } else {
+        // Emit scan failed signal
+        await emitReticleSignal('scan:failed', { domainId: selectedDomainId, error: data.error });
+      }
+    } catch (error) {
       setMessage('Error running scan.');
+      // Emit scan failed signal
+      await emitReticleSignal('scan:failed', { domainId: selectedDomainId, error: String(error) });
     } finally {
       setScanPending(false);
     }
@@ -104,6 +118,7 @@ export function DnsDashboard({ workspaceId, domains, initialDomainId }: { worksp
             <button
               onClick={scanNow}
               disabled={scanPending || loading}
+              data-testid="rescan-domain-btn"
               className="relative rounded-md bg-ink text-surface px-5 py-2 text-sm font-semibold tracking-wide shadow transition hover:bg-ink-muted disabled:opacity-60 min-h-[44px] active:scale-95 border border-transparent overflow-hidden"
             >
               {scanPending ? 'Scanning...' : 'Rescan Records'}
